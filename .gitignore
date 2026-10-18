@@ -1,0 +1,10 @@
+# 只收录前后端工程、根 README 与数据库脚本，其余一律忽略
+/*
+!/.gitignore
+!/README.md
+!/db/
+!/labsys-backend/
+!/labsys-frontend/
+
+# 临时文件
+.tmp-*

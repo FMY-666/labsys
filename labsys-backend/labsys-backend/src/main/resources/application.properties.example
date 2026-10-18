@@ -1,0 +1,11 @@
+spring.application.name=labsys-backend
+
+# ===== 数据库连接 =====
+# 复制本文件为 application.properties，再填入本机 MySQL 密码
+spring.datasource.url=jdbc:mysql://localhost:3306/labsys?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+spring.datasource.username=root
+spring.datasource.password=YOUR_MYSQL_PASSWORD
+
+# ===== MyBatis-Plus =====
+# 数据库下划线列名与 Java 驼峰字段自动映射：created_at -> createdAt
+mybatis-plus.configuration.map-underscore-to-camel-case=true
