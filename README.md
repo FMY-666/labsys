@@ -4,6 +4,16 @@
 
 后端 Spring Boot + MyBatis-Plus，前端 Vue 3 + Element Plus，前后端分离。
 
+## 界面
+
+登录页
+
+![登录页](docs/images/login.png)
+
+设备台账（管理员视角）
+
+![设备台账](docs/images/devices.png)
+
 ## 功能
 
 - **登录鉴权**：BCrypt 校验密码，登录成功签发 2 天有效期的 Token，刷新页面不掉线
@@ -47,10 +57,11 @@ npm run dev
 ```
 labsys/
 ├── db/init.sql                  # 建库建表 + 初始账号 + 示例数据
+├── docs/images/                 # README 用的界面截图
 ├── labsys-backend/              # Spring Boot 后端
 │   └── labsys-backend/src/main/java/com/labsys/
 │       ├── controller/          # 接口层
-│       ├── interceptor/         # 登录验票、管理员校验
+│       ├── interceptor/         # 登录校验、管理员校验
 │       ├── mapper/ entity/ dto/ # 数据访问 / 实体 / 出入参
 │       └── common/ config/      # 统一返回体、全局异常、配置
 └── labsys-frontend/             # Vue 3 前端
