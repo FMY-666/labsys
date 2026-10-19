@@ -10,9 +10,13 @@
 
 ![登录页](docs/images/login.png)
 
-设备台账（管理员视角）
+设备台账 · 管理员视角（可新增、编辑、删除）
 
-![设备台账](docs/images/devices.png)
+![设备台账-管理员](docs/images/devices-admin.png)
+
+设备台账 · 普通用户视角（只读，没有操作列和新增按钮）
+
+![设备台账-普通用户](docs/images/devices-student.png)
 
 ## 功能
 
