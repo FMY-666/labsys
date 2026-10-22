@@ -9,3 +9,23 @@ spring.datasource.password=YOUR_MYSQL_PASSWORD
 # ===== MyBatis-Plus =====
 # 数据库下划线列名与 Java 驼峰字段自动映射：created_at -> createdAt
 mybatis-plus.configuration.map-underscore-to-camel-case=true
+
+# ===== Redis =====
+# 需要本机先启动 Redis（默认 6379）。只有 lock-mode=redis 时才会真正连它
+spring.data.redis.host=127.0.0.1
+spring.data.redis.port=6379
+spring.data.redis.timeout=3s
+
+# ===== 预约防超借方案 =====
+# db    = 数据库行锁 SELECT ... FOR UPDATE（默认，不依赖 Redis）
+# redis = Redis 分布式锁 SETNX（需要 Redis 已启动）
+labsys.lock-mode=db
+
+# 超时未归还检查间隔（毫秒）
+labsys.overdue-check-ms=60000
+
+# ===== 工单 =====
+# 超过多少小时未被受理/处理就标记为超时催办
+labsys.ticket-overdue-hours=24
+# 超时扫描间隔（毫秒）
+labsys.ticket-check-ms=60000

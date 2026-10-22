@@ -2,17 +2,22 @@ package com.labsys.dto;
 
 import com.labsys.entity.User;
 
+import java.util.List;
+
 public class LoginVO {
+
     private Long id;
     private String username;
     private String token;
-    private String role;
+    private List<String> roles;
+    private List<String> permissions;
 
-    public LoginVO(User user, String token) {
+    public LoginVO(User user, String token, List<String> roles, List<String> permissions) {
         this.id = user.getId();
         this.username = user.getUsername();
         this.token = token;
-        this.role = user.getRole();
+        this.roles = roles;
+        this.permissions = permissions;
     }
 
     public Long getId() {
@@ -27,7 +32,11 @@ public class LoginVO {
         return token;
     }
 
-    public String getRole() {
-        return role;
+    public List<String> getRoles() {
+        return roles;
+    }
+
+    public List<String> getPermissions() {
+        return permissions;
     }
 }

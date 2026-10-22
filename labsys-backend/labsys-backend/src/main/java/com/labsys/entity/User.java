@@ -12,18 +12,15 @@ public class User {
     private Long id;
     private String username;
     private String password;
-    private String role;
+    /** 1 = 启用，0 = 停用。停用后在 AuthInterceptor 里直接拒掉，不用等令牌过期 */
+    private Integer enabled;
     private LocalDateTime createdAt;
 
     public Long getId(){return id;}
     public String getUsername(){return username;}
     public String getPassword(){return password;}
-    public String getRole(){return role;}
+    public Integer getEnabled(){return enabled;}
     public LocalDateTime getCreatedAt(){return createdAt;}
-
-    public void setRole(String role) {
-        this.role = role;
-    }
 
     public void setId(Long id) {
         this.id = id;
@@ -35,6 +32,10 @@ public class User {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public void setEnabled(Integer enabled) {
+        this.enabled = enabled;
     }
 
     public void setCreatedAt(LocalDateTime createdAt) {

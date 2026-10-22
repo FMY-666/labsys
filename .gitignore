@@ -1,11 +1,15 @@
-# 只收录前后端工程、根 README 与数据库脚本，其余一律忽略
+# 只收录前后端工程、根 README、数据库脚本，以及 README 引用的界面截图
 /*
 !/.gitignore
 !/README.md
 !/db/
-!/docs/
 !/labsys-backend/
 !/labsys-frontend/
+
+# docs 下只放行 images/，其余（笔记、临时文件）一律不进库
+!/docs/
+/docs/*
+!/docs/images/
 
 # 临时文件
 .tmp-*

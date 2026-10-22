@@ -1,6 +1,8 @@
 package com.labsys.interceptor;
 
+import com.labsys.entity.User;
 import com.labsys.entity.UserToken;
+import com.labsys.mapper.UserMapper;
 import com.labsys.mapper.UserTokenMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -13,9 +15,11 @@ import java.time.LocalDateTime;
 public class AuthInterceptor implements HandlerInterceptor {
 
     private final UserTokenMapper userTokenMapper;
+    private final UserMapper userMapper;
 
-    public AuthInterceptor(UserTokenMapper userTokenMapper) {
+    public AuthInterceptor(UserTokenMapper userTokenMapper, UserMapper userMapper) {
         this.userTokenMapper = userTokenMapper;
+        this.userMapper = userMapper;
     }
 
     @Override
@@ -38,6 +42,13 @@ public class AuthInterceptor implements HandlerInterceptor {
 
         // 校验令牌是否过期
         if (ut.getExpiresAt().isBefore(LocalDateTime.now())) {
+            return reject(response);
+        }
+
+        // 账号被停用后，已经发出去的令牌也要立刻失效。
+        // 只在登录时拦是不够的：票有效期两天，停用一个人之后他还能用一天多。
+        User user = userMapper.selectById(ut.getUserId());
+        if (user == null || (user.getEnabled() != null && user.getEnabled() == 0)) {
             return reject(response);
         }
 

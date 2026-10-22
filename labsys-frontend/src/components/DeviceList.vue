@@ -10,7 +10,7 @@ const pageSize = ref(10)
 const keyword = ref('')
 const status = ref('')
 
-const isAdmin = localStorage.getItem('role') === 'ADMIN'
+const isAdmin = sessionStorage.getItem('role') === 'ADMIN'
 
 const statusOptions = [
   { value: 'AVAILABLE', label: '可借用' },
@@ -31,7 +31,7 @@ function statusOf(s) {
 }
 
 async function load() {
-  const token = localStorage.getItem('token')
+  const token = sessionStorage.getItem('token')
   const params = new URLSearchParams()
   params.append('pageNum', pageNum.value)
   params.append('pageSize', pageSize.value)
@@ -44,8 +44,8 @@ async function load() {
   const data = await res.json()
 
   if (data.code === 401) {
-    localStorage.removeItem('token')
-    localStorage.removeItem('username')
+    sessionStorage.removeItem('token')
+    sessionStorage.removeItem('username')
     location.reload()
     return
   }
@@ -114,7 +114,7 @@ async function save() {
     return
   }
 
-  const token = localStorage.getItem('token')
+  const token = sessionStorage.getItem('token')
   const isEdit = editingId.value !== null
   const url = isEdit ? '/api/devices/' + editingId.value : '/api/devices'
 
@@ -145,7 +145,7 @@ async function remove(row) {
     return
   }
 
-  const token = localStorage.getItem('token')
+  const token = sessionStorage.getItem('token')
   const res = await fetch('/api/devices/' + row.id, {
     method: 'DELETE',
     headers: { Authorization: 'Bearer ' + token }
@@ -192,20 +192,20 @@ onMounted(load)
     </div>
 
     <el-table :data="list" border stripe empty-text="暂无设备数据">
-      <el-table-column prop="deviceNo" label="设备编号" width="140" />
-      <el-table-column prop="name" label="名称" min-width="160" />
-      <el-table-column prop="category" label="分类" width="120" />
-      <el-table-column label="状态" width="100">
+      <el-table-column prop="deviceNo" label="设备编号" min-width="104" />
+      <el-table-column prop="name" label="名称" min-width="120" />
+      <el-table-column prop="category" label="分类" min-width="84" />
+      <el-table-column label="状态" min-width="88">
         <template #default="{ row }">
           <el-tag :type="statusOf(row.status).type" effect="light">
             {{ statusOf(row.status).text }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="location" label="存放位置" min-width="140" />
-      <el-table-column prop="brand" label="品牌" width="100" />
-      <el-table-column prop="model" label="型号" width="120" />
-      <el-table-column v-if="isAdmin" label="操作" width="150" fixed="right">
+      <el-table-column prop="location" label="存放位置" min-width="110" />
+      <el-table-column prop="brand" label="品牌" min-width="88" />
+      <el-table-column prop="model" label="型号" min-width="96" />
+      <el-table-column v-if="isAdmin" label="操作" min-width="100" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
           <el-button link type="danger" @click="remove(row)">删除</el-button>

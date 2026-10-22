@@ -1,11 +1,12 @@
 package com.labsys.interceptor;
 
-import com.labsys.entity.User;
-import com.labsys.mapper.UserMapper;
+import com.labsys.mapper.RoleMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
+
+import java.util.List;
 
 /**
  * 角色校验：写操作（新增 / 修改 / 删除）要求管理员角色，查询不限。
@@ -14,10 +15,10 @@ import org.springframework.web.servlet.HandlerInterceptor;
 @Component
 public class AdminInterceptor implements HandlerInterceptor {
 
-    private final UserMapper userMapper;
+    private final RoleMapper roleMapper;
 
-    public AdminInterceptor(UserMapper userMapper) {
-        this.userMapper = userMapper;
+    public AdminInterceptor(RoleMapper roleMapper) {
+        this.roleMapper = roleMapper;
     }
 
     @Override
@@ -38,8 +39,9 @@ public class AdminInterceptor implements HandlerInterceptor {
             return reject(response, 401, "未登录或登录已过期");
         }
 
-        User user = userMapper.selectById(userId);
-        if (user == null || !"ADMIN".equals(user.getRole())) {
+        // 角色存在 sys_user_role 里，一个人可能同时是实验员和管理员
+        List<String> roles = roleMapper.findRoleCodesByUserId(userId);
+        if (!roles.contains("ADMIN")) {
             return reject(response, 403, "只有管理员才能执行这个操作");
         }
 
