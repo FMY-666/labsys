@@ -293,4 +293,24 @@ CREATE TABLE IF NOT EXISTS `sys_user_credit` (
   PRIMARY KEY (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='预约信用与违规记录';
 
+-- ------------------------------------------------------------
+-- 15. 设备分类 / 存放位置字典
+--     之前这两个字段是自由文本，"网络设备" 和 "网络" 会变成两类，筛选就废了。
+--     没有单独的字典管理页：新增设备时下拉框允许直接输入新值，
+--     后端保存设备时顺手把新值记进来，字典跟着实际使用自然长大。
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `device_dict` (
+  `id`    bigint      NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `type`  varchar(20) NOT NULL                COMMENT 'CATEGORY 分类 / LOCATION 存放位置',
+  `value` varchar(50) NOT NULL                COMMENT '取值',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_dict_type_value` (`type`, `value`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='设备分类与位置字典';
+
+-- 用现有设备数据把字典初始化，避免升级后下拉框是空的
+INSERT IGNORE INTO `device_dict` (`type`, `value`)
+  SELECT 'CATEGORY', `category` FROM `device` WHERE `category` IS NOT NULL AND `category` <> '';
+INSERT IGNORE INTO `device_dict` (`type`, `value`)
+  SELECT 'LOCATION', `location` FROM `device` WHERE `location` IS NOT NULL AND `location` <> '';
+
 

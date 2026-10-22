@@ -21,11 +21,22 @@ const DEVICE_STATUS_LABEL = {
   SCRAPPED: '已报废'
 }
 
+const TICKET_STATUS_LABEL = {
+  PENDING: '待受理',
+  ACCEPTED: '处理中',
+  RESOLVED: '已解决',
+  REJECTED: '已驳回'
+}
+
 const summary = ref({
   deviceTotal: 0, reservationTotal: 0, ticketTotal: 0, ticketPending: 0, ticketOverdue: 0
 })
 
+/** 排行和趋势只看最近多少天 */
+const days = ref(7)
+
 const elStatus = ref(null)
+const elTicket = ref(null)
 const elBorrow = ref(null)
 const elFault = ref(null)
 const elTrend = ref(null)
@@ -34,6 +45,12 @@ let charts = []
 
 function mount(el, option) {
   if (!el) return
+  // 切换时间范围会重新画图，同一个 DOM 上先销毁旧实例，否则 ECharts 会报 already initialized
+  const old = echarts.getInstanceByDom(el)
+  if (old) {
+    old.dispose()
+    charts = charts.filter((c) => c !== old)
+  }
   const c = echarts.init(el)
   c.setOption(option)
   charts.push(c)
@@ -44,7 +61,7 @@ function onResize() {
 }
 
 async function load() {
-  const res = await get('/api/stats/overview')
+  const res = await get(`/api/stats/overview?days=${days.value}`)
   if (res.code !== 200) {
     ElMessage.error(res.message || '加载看板失败')
     return
@@ -92,10 +109,17 @@ async function load() {
   mount(elBorrow.value, barOption('借用排行（前 5）', d.borrowRanking, '#2f6feb'))
   mount(elFault.value, barOption('故障 TOP（前 5）', d.faultRanking, '#c1352b'))
 
+  // 工单状态分布：后端一直在算，之前没画，白白多查一次
+  const ticketData = (d.ticketStatus || []).map((x) => ({
+    name: TICKET_STATUS_LABEL[x.name] || x.name,
+    value: Number(x.value)
+  }))
+  mount(elTicket.value, barOption('工单状态分布', ticketData, '#a35c00'))
+
   // 工单趋势：折线图。后端只返回有工单的日期，这里不补 0，先看真实形状
   const trend = d.ticketTrend || []
   mount(elTrend.value, {
-    title: { text: '近 7 天工单趋势', left: 'center', textStyle: { fontSize: 14 } },
+    title: { text: `近 ${days.value} 天工单趋势`, left: 'center', textStyle: { fontSize: 14 } },
     tooltip: { trigger: 'axis' },
     grid: { left: 8, right: 24, top: 46, bottom: 8, containLabel: true },
     xAxis: { type: 'category', data: trend.map((x) => x.name), boundaryGap: false },
@@ -109,11 +133,17 @@ async function load() {
       data: trend.map((x) => Number(x.value))
     }]
   })
-
-  window.addEventListener('resize', onResize)
 }
 
-onMounted(load)
+function reload() {
+  load()
+}
+
+onMounted(() => {
+  load()
+  // 监听只挂一次；挂在 load 里会随着切换时间范围越积越多
+  window.addEventListener('resize', onResize)
+})
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', onResize)
@@ -124,7 +154,18 @@ onBeforeUnmount(() => {
 
 <template>
   <div>
-    <h2 class="page-title">数据看板</h2>
+    <div class="head">
+      <h2 class="page-title">数据看板</h2>
+      <div class="range">
+        <span>统计范围</span>
+        <el-select v-model="days" style="width:120px" @change="reload">
+          <el-option :value="7" label="近 7 天" />
+          <el-option :value="30" label="近 30 天" />
+          <el-option :value="90" label="近 90 天" />
+        </el-select>
+        <span class="range-tip">影响排行与趋势，卡片是全量</span>
+      </div>
+    </div>
 
     <div class="cards">
       <div class="card">
@@ -147,6 +188,7 @@ onBeforeUnmount(() => {
 
     <div class="grid">
       <div class="chart" ref="elStatus"></div>
+      <div class="chart" ref="elTicket"></div>
       <div class="chart" ref="elBorrow"></div>
       <div class="chart" ref="elFault"></div>
       <div class="chart" ref="elTrend"></div>
@@ -155,7 +197,11 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.page-title { margin: 0 0 16px; font-size: 20px; }
+.page-title { margin: 0; font-size: 20px; }
+
+.head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
+.range { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #5b6470; }
+.range-tip { font-size: 12px; color: #a8b0bb; }
 
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 18px; }
 .card { background: #fff; border: 1px solid #e3e7ec; border-radius: 11px; padding: 14px 16px; }

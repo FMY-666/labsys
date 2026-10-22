@@ -154,4 +154,15 @@ public class ReservationController {
     public Result returningCount() {
         return new Result(200, "ok", reservationService.countReturning());
     }
+
+    /**
+     * 续借：把自己的预约往后延。
+     * 和取消/归还一样单独开接口，不走 /status 那条被 StaffInterceptor 挡住的路径。
+     */
+    @PutMapping("/reservations/{id}/extend")
+    public Result extend(@PathVariable Long id,
+                         @RequestParam(defaultValue = "1") int hours,
+                         @RequestAttribute("userId") Long userId) {
+        return reservationService.extend(id, userId, hours);
+    }
 }

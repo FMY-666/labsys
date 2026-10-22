@@ -1,11 +1,15 @@
 package com.labsys.scheduler;
 
+import com.labsys.mapper.OperLogMapper;
 import com.labsys.service.ReservationService;
 import com.labsys.service.TicketService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+
+import java.time.LocalDateTime;
 
 @Component
 public class ReservationScheduler {
@@ -14,10 +18,17 @@ public class ReservationScheduler {
 
     private final ReservationService reservationService;
     private final TicketService ticketService;
+    private final OperLogMapper operLogMapper;
 
-    public ReservationScheduler(ReservationService reservationService, TicketService ticketService) {
+    /** 操作日志保留多少天 */
+    @Value("${labsys.log-retain-days:90}")
+    private int logRetainDays;
+
+    public ReservationScheduler(ReservationService reservationService, TicketService ticketService,
+                                OperLogMapper operLogMapper) {
         this.reservationService = reservationService;
         this.ticketService = ticketService;
+        this.operLogMapper = operLogMapper;
     }
 
     /**
@@ -31,6 +42,11 @@ public class ReservationScheduler {
             int n = reservationService.releaseOverdue();
             if (n > 0) {
                 log.info("超时未归还自动释放：{} 条", n);
+            }
+            // 顺便把走不到终态的记录收掉，否则“进行中”列表只增不减
+            int closed = reservationService.closeStale();
+            if (closed > 0) {
+                log.info("过期/长期未还的预约自动结案：{} 条", closed);
             }
         } catch (Exception e) {
             log.error("超时释放任务执行失败", e);
@@ -47,6 +63,22 @@ public class ReservationScheduler {
             }
         } catch (Exception e) {
             log.error("工单超时任务执行失败", e);
+        }
+    }
+
+    /**
+     * 每天凌晨 3:30 清掉过期的操作日志。
+     * 用 cron 而不是固定间隔：这件事一天做一次就够，固定间隔会在白天反复扫表。
+     */
+    @Scheduled(cron = "0 30 3 * * *")
+    public void cleanOperLogs() {
+        try {
+            int n = operLogMapper.deleteBefore(LocalDateTime.now().minusDays(logRetainDays));
+            if (n > 0) {
+                log.info("清理操作日志：{} 条（保留 {} 天）", n, logRetainDays);
+            }
+        } catch (Exception e) {
+            log.error("清理操作日志失败", e);
         }
     }
 }

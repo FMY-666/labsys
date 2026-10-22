@@ -58,6 +58,8 @@ public class WebConfig implements WebMvcConfigurer {
                         "/api/tickets", "/api/tickets/*/status",
                         "/api/users/options",
                         "/api/credit/users",
+                        "/api/devices/*/history",
+                        "/api/devices/export",
                         "/api/stats/**");
 
         // 操作日志记录：只记写操作，放在最后

@@ -21,18 +21,19 @@ public interface StatsMapper {
     @Select("SELECT status AS name, COUNT(*) AS value FROM device GROUP BY status")
     List<Map<String, Object>> deviceStatusCount();
 
-    /** 借用排行：被借过次数最多的设备 */
+    /** 借用排行：某一时间窗口内被借过次数最多的设备 */
     @Select("SELECT d.name AS name, COUNT(*) AS value " +
             "FROM reservation r JOIN device d ON d.id = r.device_id " +
-            "WHERE r.status IN ('BORROWED','RETURNED','OVERDUE') " +
+            "WHERE r.status IN ('BORROWED','RETURNED','OVERDUE') AND r.start_time >= #{since} " +
             "GROUP BY r.device_id, d.name ORDER BY value DESC LIMIT 5")
-    List<Map<String, Object>> borrowRanking();
+    List<Map<String, Object>> borrowRanking(@Param("since") LocalDateTime since);
 
-    /** 故障 TOP：报修次数最多的设备 */
+    /** 故障 TOP：某一时间窗口内报修次数最多的设备 */
     @Select("SELECT d.name AS name, COUNT(*) AS value " +
             "FROM ticket t JOIN device d ON d.id = t.device_id " +
+            "WHERE t.created_at >= #{since} " +
             "GROUP BY t.device_id, d.name ORDER BY value DESC LIMIT 5")
-    List<Map<String, Object>> faultRanking();
+    List<Map<String, Object>> faultRanking(@Param("since") LocalDateTime since);
 
     /**
      * 工单趋势：最近 N 天每天新增多少工单（没有工单的日期不会出现，前端自己补 0）

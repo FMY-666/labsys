@@ -23,6 +23,22 @@ labsys.lock-mode=db
 
 # 超时未归还检查间隔（毫秒）
 labsys.overdue-check-ms=60000
+# 超时未还多少天后自动结案（否则永远挂在「进行中」）
+labsys.overdue-close-days=3
+
+# ===== 预约规则 =====
+# 一个人最多同时保留几条进行中的预约
+labsys.max-active-reservations=3
+# 实验室几点关门，预约结束时间不能晚于此
+labsys.reservation.close-hour=22
+
+# ===== 操作日志 =====
+# 超过多少天的操作日志自动清理（每天 03:30 跑一次）
+labsys.log-retain-days=90
+
+# ===== 文件上传（设备台账导入 Excel）=====
+spring.servlet.multipart.max-file-size=5MB
+spring.servlet.multipart.max-request-size=5MB
 
 # ===== 工单 =====
 # 超过多少小时未被受理/处理就标记为超时催办

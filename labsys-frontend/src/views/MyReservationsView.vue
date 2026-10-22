@@ -45,6 +45,49 @@ const creditTag = computed(() => {
   return 'success'
 })
 
+/** 违规明细：只给汇总数字的话，学生不知道自己哪次超时导致扣分 */
+const violationVisible = ref(false)
+const violationLoading = ref(false)
+const violationRows = ref([])
+
+/** 续借：把自己的预约往后延几小时 */
+const extendVisible = ref(false)
+const extendTarget = ref(null)
+const extendHours = ref(1)
+const extending = ref(false)
+
+function openExtend(row) {
+  extendTarget.value = row
+  extendHours.value = 1
+  extendVisible.value = true
+}
+
+async function submitExtend() {
+  extending.value = true
+  const res = await put(`/api/reservations/${extendTarget.value.id}/extend?hours=${extendHours.value}`)
+  extending.value = false
+  if (res.code === 200) {
+    ElMessage.success(res.message || '已延长')
+    extendVisible.value = false
+    load()
+  } else {
+    // 409 是「后面那位已经约了」，和学生自身操作无关，用 warning 区分开
+    ElMessage({ type: res.code === 409 ? 'warning' : 'error', message: res.message || '续借失败', duration: 4000 })
+  }
+}
+
+async function openViolations() {
+  violationVisible.value = true
+  violationLoading.value = true
+  const res = await get('/api/credit/my-violations')
+  violationLoading.value = false
+  if (res.code === 200) {
+    violationRows.value = res.data
+  } else {
+    ElMessage.error(res.message || '加载违规明细失败')
+  }
+}
+
 const dialogVisible = ref(false)
 const submitting = ref(false)
 const form = ref(emptyForm())
@@ -350,7 +393,11 @@ onBeforeUnmount(() => {
         <span>信用分</span>
       </div>
       <el-tag size="small" :type="creditTag">{{ credit?.levelText || '信用正常' }}</el-tag>
-      <span class="sep">违规 <b>{{ credit?.violations ?? 0 }}</b> 次</span>
+      <span class="sep">
+        违规 <b>{{ credit?.violations ?? 0 }}</b> 次
+        <el-button v-if="credit?.violations" link type="primary" size="small"
+                   style="margin-left:2px" @click="openViolations">明细</el-button>
+      </span>
       <span class="sep">
         按时归还 <b>{{ credit?.onTimeStreak ?? 0 }}</b> / 3
         <em v-if="credit?.violations">（再 {{ credit?.offsetRemain }} 次抵 1 次）</em>
@@ -417,13 +464,17 @@ onBeforeUnmount(() => {
           <span v-else style="color:#b7c0cc">—</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" min-width="96" fixed="right">
+      <el-table-column label="操作" min-width="150" fixed="right">
         <template #default="{ row }">
           <el-button v-if="row.status === 'PENDING'" link type="danger" @click="cancel(row)">取消</el-button>
-          <el-button
-            v-else-if="row.status === 'BORROWED' || row.status === 'OVERDUE'"
-            link type="success" @click="doReturn(row)"
-          >申请归还</el-button>
+          <template v-else-if="row.status === 'APPROVED'">
+            <el-button link type="primary" @click="openExtend(row)">续借</el-button>
+          </template>
+          <template v-else-if="row.status === 'BORROWED'">
+            <el-button link type="primary" @click="openExtend(row)">续借</el-button>
+            <el-button link type="success" @click="doReturn(row)">申请归还</el-button>
+          </template>
+          <el-button v-else-if="row.status === 'OVERDUE'" link type="success" @click="doReturn(row)">申请归还</el-button>
           <span v-else-if="row.status === 'RETURNING'" style="color:#a35c00;font-size:12.5px">等确认</span>
           <span v-else style="color:#b7c0cc">—</span>
         </template>
@@ -506,6 +557,50 @@ onBeforeUnmount(() => {
         <el-button type="primary" :loading="submitting" @click="submit">提交</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="extendVisible" title="续借" width="420px">
+      <p class="violation-tip">
+        当前：<b>{{ humanRange(extendTarget || {}) }}</b><br>
+        续借不能跨天，最晚到 22:00，且后面的时段不能已经被人约走。
+      </p>
+      <el-form label-width="80px">
+        <el-form-item label="延长">
+          <el-input-number v-model="extendHours" :min="1" :max="8" :step="1" :precision="0"
+                           controls-position="right" style="width:130px" />
+          <span class="hint">小时</span>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="extendVisible = false">取消</el-button>
+        <el-button type="primary" :loading="extending" @click="submitExtend">确认续借</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="violationVisible" title="违规明细" width="620px">
+      <p class="violation-tip">
+        下面这些预约超过结束时间 30 分钟仍未归还，各记 1 次违规。
+        按时归还满 3 次可以抵掉 1 次。
+      </p>
+      <el-table :data="violationRows" v-loading="violationLoading" size="small" border
+                empty-text="没有违规记录">
+        <el-table-column label="设备" min-width="130">
+          <template #default="{ row }">{{ deviceName[row.deviceId] || '设备 ' + row.deviceId }}</template>
+        </el-table-column>
+        <el-table-column label="使用时间" min-width="170">
+          <template #default="{ row }">{{ humanRange(row) }}</template>
+        </el-table-column>
+        <el-table-column label="归还时间" min-width="120">
+          <template #default="{ row }">{{ row.returnedAt ? fmt(row.returnedAt) : '未归还' }}</template>
+        </el-table-column>
+        <el-table-column label="状态" min-width="96">
+          <template #default="{ row }">
+            <el-tag size="small" :type="RES_STATUS[row.status]?.type">
+              {{ RES_STATUS[row.status]?.label || row.status }}
+            </el-tag>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-dialog>
   </div>
 </template>
 
@@ -543,6 +638,8 @@ onBeforeUnmount(() => {
   background: #fdecec; border: 1px solid #f5c2c2; color: #a32d2d;
   border-radius: 8px; padding: 9px 14px; font-size: 13px; margin-bottom: 12px;
 }
+
+.violation-tip { margin: 0 0 12px; font-size: 12.5px; color: #5b6470; line-height: 1.7; }
 
 .cd { font-variant-numeric: tabular-nums; font-size: 13px; }
 .cd.wait { color: #5b6470; }

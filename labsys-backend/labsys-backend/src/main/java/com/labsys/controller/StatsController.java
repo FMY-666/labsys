@@ -9,6 +9,7 @@ import com.labsys.mapper.StatsMapper;
 import com.labsys.mapper.TicketMapper;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
@@ -40,15 +41,20 @@ public class StatsController {
      * 合并成一个反而更快、也更不容易出现"一半新一半旧"。
      */
     @GetMapping("/stats/overview")
-    public Result overview() {
+    public Result overview(@RequestParam(defaultValue = "7") int days) {
+
+        // 夹一下范围，别让前端传个 -1 或 100000 把查询拖死
+        int window = Math.min(Math.max(days, 1), 365);
+        LocalDateTime since = LocalDateTime.now().minusDays(window - 1L);
 
         Map<String, Object> data = new HashMap<>();
 
+        data.put("days", window);
         data.put("deviceStatus", statsMapper.deviceStatusCount());
-        data.put("borrowRanking", statsMapper.borrowRanking());
-        data.put("faultRanking", statsMapper.faultRanking());
+        data.put("borrowRanking", statsMapper.borrowRanking(since));
+        data.put("faultRanking", statsMapper.faultRanking(since));
         data.put("ticketStatus", statsMapper.ticketStatusCount());
-        data.put("ticketTrend", statsMapper.ticketTrend(LocalDateTime.now().minusDays(6)));
+        data.put("ticketTrend", statsMapper.ticketTrend(since));
 
         Map<String, Object> summary = new HashMap<>();
         summary.put("deviceTotal", deviceMapper.selectCount(null));

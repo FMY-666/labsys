@@ -1,10 +1,11 @@
 package com.labsys.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.labsys.common.Result;
 import com.labsys.entity.User;
 import com.labsys.entity.UserCredit;
+import com.labsys.entity.Reservation;
+import com.labsys.mapper.ReservationMapper;
 import com.labsys.mapper.UserCreditMapper;
 import com.labsys.mapper.UserMapper;
 import org.springframework.stereotype.Service;
@@ -51,10 +52,13 @@ public class CreditService {
 
     private final UserCreditMapper creditMapper;
     private final UserMapper userMapper;
+    private final ReservationMapper reservationMapper;
 
-    public CreditService(UserCreditMapper creditMapper, UserMapper userMapper) {
+    public CreditService(UserCreditMapper creditMapper, UserMapper userMapper,
+                         ReservationMapper reservationMapper) {
         this.creditMapper = creditMapper;
         this.userMapper = userMapper;
+        this.reservationMapper = reservationMapper;
     }
 
     /** 查不到就建一行全零的，调用方不用判空 */
@@ -74,19 +78,16 @@ public class CreditService {
     }
 
     /**
-     * 保存。这里不能用 updateById —— MyBatis-Plus 默认跳过值为 null 的字段，
+     * 保存。这里不能只靠 updateById —— MyBatis-Plus 默认跳过值为 null 的字段，
      * 解禁时 setBannedUntil(null) 会被静默丢掉，数据库里的禁约时间还在，
-     * 结果就是“违规清零了但学生还是不能约”。UpdateWrapper 的 .set 才会真的写出 NULL。
+     * 结果就是“违规清零了但学生还是不能约”。所以 null 的情况单独发一条 UPDATE 显式写 NULL。
      */
     private void save(UserCredit c) {
         c.setUpdatedAt(LocalDateTime.now());
-        creditMapper.update(null, new LambdaUpdateWrapper<UserCredit>()
-                .eq(UserCredit::getUserId, c.getUserId())
-                .set(UserCredit::getViolations, c.getViolations())
-                .set(UserCredit::getOnTimeStreak, c.getOnTimeStreak())
-                .set(UserCredit::getBannedUntil, c.getBannedUntil())
-                .set(UserCredit::getPermanentBan, c.getPermanentBan())
-                .set(UserCredit::getUpdatedAt, c.getUpdatedAt()));
+        creditMapper.updateById(c);
+        if (c.getBannedUntil() == null) {
+            creditMapper.clearBanUntil(c.getUserId());
+        }
     }
 
     /** 100 分制，只用于展示，扣到 0 就不再往下掉 */
@@ -237,6 +238,15 @@ public class CreditService {
             return blocked(c) ? "禁约中（到 " + c.getBannedUntil().format(FMT) + "）" : "违规 " + v + " 次";
         }
         return "已封禁，需管理员解禁";
+    }
+
+    /** 学生自己看：哪几次超时导致扣分。只有汇总数字的话，学生不服也没法申诉 */
+    public List<Reservation> myViolations(Long userId) {
+        return reservationMapper.selectList(new LambdaQueryWrapper<Reservation>()
+                .eq(Reservation::getUserId, userId)
+                .eq(Reservation::getOverdueViolation, 1)
+                .orderByDesc(Reservation::getEndTime)
+                .last("LIMIT 20"));
     }
 
     /**

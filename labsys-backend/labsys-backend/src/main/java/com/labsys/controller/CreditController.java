@@ -36,6 +36,12 @@ public class CreditController {
         return new Result(200, "ok", creditService.listAbnormal());
     }
 
+    /** 学生看自己的违规明细：哪几次超时导致扣分 */
+    @GetMapping("/credit/my-violations")
+    public Result myViolations(@RequestAttribute("userId") Long userId) {
+        return new Result(200, "ok", creditService.myViolations(userId));
+    }
+
     /** 管理员解禁：违规清零、封禁解除 */
     @PostMapping("/credit/{userId}/reset")
     public Result reset(@PathVariable Long userId) {
