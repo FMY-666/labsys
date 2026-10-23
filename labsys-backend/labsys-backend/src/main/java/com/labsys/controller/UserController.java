@@ -1,7 +1,9 @@
 package com.labsys.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.labsys.common.Result;
+import com.labsys.dto.AvatarRequest;
 import com.labsys.dto.LoginRequest;
 import com.labsys.dto.LoginVO;
 import com.labsys.dto.PasswordRequest;
@@ -30,6 +32,9 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api")
 public class UserController {
+
+    /** base64 长度上限，约合 150KB 原图。正常头像只有这个数的十分之一 */
+    private static final int MAX_AVATAR_LENGTH = 200_000;
 
     private final UserMapper userMapper;
     private final PasswordEncoder encoder = new BCryptPasswordEncoder();
@@ -130,6 +135,43 @@ public class UserController {
         userTokenMapper.delete(new LambdaQueryWrapper<UserToken>().eq(UserToken::getUserId, userId));
 
         return new Result(200, "密码已修改，请重新登录", null);
+    }
+
+    /**
+     * 换自己的头像。
+     * 前端会先把图片裁成正方形压到 160×160 再传上来，这里再兜一道长度上限，
+     * 防的是绕开页面直接打接口塞一张几 MB 的原图进数据库。
+     */
+    @PutMapping("/me/avatar")
+    public Result changeAvatar(@RequestAttribute("userId") Long userId,
+                               @RequestBody AvatarRequest req) {
+        String avatar = req.getAvatar();
+        if (avatar == null) {
+            return new Result(400, "缺少头像内容", null);
+        }
+
+        // 空串 = 恢复默认（显示用户名首字母）。
+        // updateById 会跳过 null 字段，写不回去，所以这里用 UpdateWrapper 显式 set。
+        if (avatar.isEmpty()) {
+            userMapper.update(null, new LambdaUpdateWrapper<User>()
+                    .eq(User::getId, userId)
+                    .set(User::getAvatar, null));
+            return new Result(200, "已恢复默认头像", null);
+        }
+
+        if (!avatar.startsWith("data:image/") || !avatar.contains(";base64,")) {
+            return new Result(400, "头像必须是 base64 编码的图片", null);
+        }
+        if (avatar.length() > MAX_AVATAR_LENGTH) {
+            return new Result(400, "头像太大了，换一张小一点的", null);
+        }
+
+        User update = new User();
+        update.setId(userId);
+        update.setAvatar(avatar);
+        userMapper.updateById(update);
+
+        return new Result(200, "头像已更新", null);
     }
 
     /**

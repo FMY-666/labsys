@@ -16,7 +16,7 @@ const store = window.sessionStorage
   const oldToken = window.localStorage.getItem('token')
   if (!oldToken || store.getItem('token')) return
 
-  const keys = ['token', 'username', 'roles', 'permissions', 'role']
+  const keys = ['token', 'username', 'roles', 'permissions', 'role', 'avatar']
   keys.forEach((k) => {
     const v = window.localStorage.getItem(k)
     if (v !== null) store.setItem(k, v)
@@ -27,6 +27,7 @@ const store = window.sessionStorage
 export const session = reactive({
   token: store.getItem('token') || '',
   username: store.getItem('username') || '',
+  avatar: store.getItem('avatar') || '',
   roles: JSON.parse(store.getItem('roles') || '[]'),
   permissions: JSON.parse(store.getItem('permissions') || '[]'),
   menus: []
@@ -35,25 +36,37 @@ export const session = reactive({
 export function setSession(loginData) {
   session.token = loginData.token || ''
   session.username = loginData.username || ''
+  session.avatar = loginData.avatar || ''
   session.roles = loginData.roles || []
   session.permissions = loginData.permissions || []
 
   store.setItem('token', session.token)
   store.setItem('username', session.username)
+  store.setItem('avatar', session.avatar)
   store.setItem('roles', JSON.stringify(session.roles))
   store.setItem('permissions', JSON.stringify(session.permissions))
   // 旧组件还按单个角色读取，保留一个主角色
   store.setItem('role', session.roles[0] || '')
 }
 
+/**
+ * 换完头像直接改内存 + 当前标签页的存档，不用再请求一次 /api/me。
+ * 头像本身就是 base64，塞进 sessionStorage 也就二三十 KB，不占配额。
+ */
+export function setAvatar(dataUrl) {
+  session.avatar = dataUrl || ''
+  store.setItem('avatar', session.avatar)
+}
+
 export function clearSession() {
   session.token = ''
   session.username = ''
+  session.avatar = ''
   session.roles = []
   session.permissions = []
   session.menus = []
 
-  const keys = ['token', 'username', 'roles', 'permissions', 'role']
+  const keys = ['token', 'username', 'roles', 'permissions', 'role', 'avatar']
   keys.forEach((k) => store.removeItem(k))
 }
 

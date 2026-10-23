@@ -1,5 +1,6 @@
 package com.labsys.interceptor;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.labsys.entity.User;
 import com.labsys.entity.UserToken;
 import com.labsys.mapper.UserMapper;
@@ -47,7 +48,10 @@ public class AuthInterceptor implements HandlerInterceptor {
 
         // 账号被停用后，已经发出去的令牌也要立刻失效。
         // 只在登录时拦是不够的：票有效期两天，停用一个人之后他还能用一天多。
-        User user = userMapper.selectById(ut.getUserId());
+        // 只查 id 和 enabled：avatar 是 mediumtext，每个请求都顺手捞一遍没必要。
+        User user = userMapper.selectOne(new LambdaQueryWrapper<User>()
+                .select(User::getId, User::getEnabled)
+                .eq(User::getId, ut.getUserId()));
         if (user == null || (user.getEnabled() != null && user.getEnabled() == 0)) {
             return reject(response);
         }

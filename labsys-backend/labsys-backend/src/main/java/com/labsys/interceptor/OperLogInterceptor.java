@@ -1,5 +1,6 @@
 package com.labsys.interceptor;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.labsys.entity.OperLog;
 import com.labsys.entity.User;
 import com.labsys.mapper.OperLogMapper;
@@ -49,7 +50,10 @@ public class OperLogInterceptor implements HandlerInterceptor {
         Long userId = (Long) request.getAttribute("userId");
         if (userId != null) {
             log.setUserId(userId);
-            User user = userMapper.selectById(userId);
+            // 只要用户名，别把 avatar 这类大字段一起捞出来
+            User user = userMapper.selectOne(new LambdaQueryWrapper<User>()
+                    .select(User::getUsername)
+                    .eq(User::getId, userId));
             if (user != null) {
                 log.setUsername(user.getUsername());
             }

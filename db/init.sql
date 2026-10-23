@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS `sys_user` (
   `password`   varchar(100) NOT NULL                               COMMENT 'BCrypt 加密后的密码，不存明文',
   `enabled`    tinyint      NOT NULL DEFAULT 1                     COMMENT '1=启用，0=停用（停用后令牌立即失效）',
   `created_at` datetime              DEFAULT CURRENT_TIMESTAMP     COMMENT '创建时间',
+  `avatar`     mediumtext                                        COMMENT '头像 base64 data URL，NULL 表示用用户名首字母兜底',
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
